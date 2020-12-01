@@ -1,7 +1,7 @@
 //ROS头文件
 #include <ros/ros.h>
 //包含自定义msg产生的头文件
-#include <topic_demo/gps.h>
+// #include <topic_demo/gps.h>
 //ROS标准msg头文件
 #include <std_msgs/Float32.h>
 // 获取多线程库
