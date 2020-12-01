@@ -15,7 +15,7 @@
 // pgv: zhangjunwang
 #include <reader/pos.h>
 // mapf
-#include <mapf/AgentsTrajectory.h>
+// #include <mapf/AgentsTrajectory.h>
 // odom 
 #include <nav_msgs/Odometry.h>
 // #include <geometry_msgs
