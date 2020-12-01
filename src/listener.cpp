@@ -81,7 +81,7 @@ public:
     position_.angle = angle;
     position_.last_time = time;
     // 此处不记录时间
-    ROS_INFO_STREAM("I heard: [ \t" << x << ", \t" << y << ", \t" << angle  << "\t]");
+    std::cout << "Recived PGV update: [ " << position_.x << ", " << position_.y << ", " << position_.angle  << "]" << std::endl;
     // ROS_INFO_STREAM("I heard: [ " << time << "] in thread [" << boost::this_thread::get_id() << "]");
     // 是否需要解锁?
   }
@@ -167,10 +167,7 @@ void pgvCallbackThread() {
 // pgv 回调
 void pgvCallback(const reader::pos::ConstPtr &msg) {
   // 直接覆盖当前的位置参数，并清空队列
-  loc.setLocation(msg->x, msg->y, msg->angle, msg->stamp);
-  // 清空 serial_queue 队列
-  odom_queue.clear();
-  ROS_INFO_STREAM("PGV update: [" << msg->x << ", " << msg->y << ", " << msg->angle << "]");
+  loc.setLocation(msg->x, msg->y, msg->angle / 180 * PI, msg->stamp);
 }
 
 // odom 处理线程
@@ -202,6 +199,7 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     init = true;
   }
   double last_z = last_odom_.quater.toRotationMatrix().eulerAngles(2, 1, 0)[0];
+  // TODO: 确定此处的正反
   double diff_angle = cur_z - last_z;
   double x = msg->pose.pose.position.x - last_odom_.x;
   double y = msg->pose.pose.position.y - last_odom_.y;
@@ -228,10 +226,6 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "listener");
   ros::NodeHandle n;
-  
-  // // test sub
-  // ros::SubscribeOptions opt_test = ros::SubscribeOptions::create<topic_demo::gps>
-  //   ("gps_info", 10, gpsCustomQueue, ros::VoidPtr(), &pgv_queue);
 
   // PGV 订阅处理线程
   ros::SubscribeOptions opt_pgv = ros::SubscribeOptions::create<reader::pos>
@@ -240,8 +234,6 @@ int main(int argc, char **argv)
   boost::thread PGV_thread(pgvCallbackThread); 
 
   // Odom 订阅处理线程
-
-  // 调度信息订阅: 主线程
   ros::SubscribeOptions opt_odom = ros::SubscribeOptions::create<nav_msgs::Odometry>
     ("/odom", 10, odomCallback, ros::VoidPtr(), &odom_queue);
   ros::Subscriber sub_odom = n.subscribe(opt_odom);
@@ -254,7 +246,7 @@ int main(int argc, char **argv)
   while (n.ok())
   {
     // 主程序循环：计算当前位置与目标点的距离，生成控制指令
-    r.sleep(); 
+    r.sleep();
   }
  
   // 等待对应的线程结束
