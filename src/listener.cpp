@@ -14,6 +14,10 @@
 #include <vector>
 // pgv: zhangjunwang
 #include <reader/pos.h>
+// mapf
+#include <mapf/AgentsTrajectory.h>
+// odom 
+// #include <nav_msgs/Odometry.h>
 
 typedef boost::shared_lock<boost::shared_mutex> ReadLock;
 typedef boost::lock_guard<boost::shared_mutex> WriteLock;
@@ -22,7 +26,10 @@ typedef boost::lock_guard<boost::shared_mutex> WriteLock;
 typedef struct {
   float x;
   float y;
-  // float angle;
+  float angle;
+
+  // 上次步进时间
+  float last_time;
 }Position;
 // 全局 task 信息
 typedef struct {
@@ -43,31 +50,34 @@ public:
     ReadLock lock(rwMutex_);
     return position_;
   }
-  void setLocation(float x, float y, bool isPGV = false) {
+  void setLocation(float x, float y, float angle, float time) {
+    // 更新所有参数
     WriteLock lock(rwMutex_);
-    if(isPGV) {
-      ROS_INFO_STREAM("recived PGV information" << "[" << x << "," << y << "]");
-    }
     position_.x = x;
     position_.y = y;
+    position_.angle = angle;
+    position_.last_time = time;
+    ROS_INFO_STREAM("I heard: [ " << time << "] in thread [" << boost::this_thread::get_id() << "]");
+    // 是否需要解锁?
   }
-  // 更新全局目标点
-  // void updateTask()
-  // 获取下一目标点
-  // Goal getNextGoal() {
-  //   ReadLock lock(rwMutex_);
-  //   return task.pop_back();
-  // }
 };
 
+// 构造函数
 Location::Location(/* args */)
 {
+  // 初始化参数
   position_.x = 0;
   position_.y = 0;
+  position_.angle = 0;
+  // 初始化时标记当前时间为负值
+  position_.last_time = -1;
 }
 
 // 创建消息队列
-ros::CallbackQueue g_queue;
+ros::CallbackQueue pgv_queue;
+ros::CallbackQueue serial_queue;
+ros::CallbackQueue task_queue;
+// ros::CallbackQueue odom_queue;
 Location loc;
 
 
@@ -80,59 +90,62 @@ void gpsMainQueue(const topic_demo::gps::ConstPtr &msg) {
 }
 
 // 子线程回调
-void gpsCustomQueue(const topic_demo::gps::ConstPtr &msg) {
-  std_msgs::Float32 distance;
-  distance.data = sqrt(pow(msg->x,2)+pow(msg->y,2));
-  loc.setLocation(msg->x, msg->y);
-  ROS_INFO_STREAM("I heard: [ " << distance.data << "] in thread [" << boost::this_thread::get_id() << "]");
-}
+// void gpsCustomQueue(const topic_demo::gps::ConstPtr &msg) {
+//   std_msgs::Float32 distance;
+//   distance.data = sqrt(pow(msg->x,2)+pow(msg->y,2));
+//   loc.setLocation(msg->x, msg->y);
+//   ROS_INFO_STREAM("I heard: [ " << distance.data << "] in thread [" << boost::this_thread::get_id() << "]");
+// }
 
-// 线程回调
-void callbackThread() {
+// test 回调
+// void gpsCallback(const topic_demo::gps::ConstPtr &msg)
+// {  
+//     //计算离原点(0,0)的距离
+//     std_msgs::Float32 distance;
+//     distance.data = sqrt(pow(msg->x,2)+pow(msg->y,2));
+//     //float distance = sqrt(pow(msg->x,2)+pow(msg->y,2));
+//     ROS_INFO("Listener: Distance to origin = %f, state: %s",distance.data,msg->state.c_str());
+// }
+
+// 新建线程回调
+void pgvCallbackThread() {
   ROS_INFO_STREAM("Callback thread id=" << boost::this_thread::get_id());
   
   ros::NodeHandle n;
   while (n.ok())
   {
     // 执行所有回调
-    g_queue.callAvailable(ros::WallDuration(0));
+    pgv_queue.callAvailable(ros::WallDuration(0));
   }
-  
-}
-
-// test 回调
-void gpsCallback(const topic_demo::gps::ConstPtr &msg)
-{  
-    //计算离原点(0,0)的距离
-    std_msgs::Float32 distance;
-    distance.data = sqrt(pow(msg->x,2)+pow(msg->y,2));
-    //float distance = sqrt(pow(msg->x,2)+pow(msg->y,2));
-    ROS_INFO("Listener: Distance to origin = %f, state: %s",distance.data,msg->state.c_str());
 }
 
 // pgv 回调
 void pgvCallback(const reader::pos::ConstPtr &msg) {
-  loc.setLocation(msg->x, msg->y, true);
+  // 直接覆盖当前的位置参数，并清空队列
+  loc.setLocation(msg->x, msg->y, msg->angle, msg->stamp);
+  // 清空 serial_queue 队列
+  serial_queue.clear();
+  ROS_INFO_STREAM("Get position from class: [ " << loc.getLocation().last_time);
 }
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "listener");
   ros::NodeHandle n;
   
-  // test sub
-  ros::SubscribeOptions opt_test = ros::SubscribeOptions::create<topic_demo::gps>
-    ("gps_info", 10, gpsCustomQueue, ros::VoidPtr(), &g_queue);
+  // // test sub
+  // ros::SubscribeOptions opt_test = ros::SubscribeOptions::create<topic_demo::gps>
+  //   ("gps_info", 10, gpsCustomQueue, ros::VoidPtr(), &pgv_queue);
 
-  // PGV sub
+  // PGV 订阅处理线程
   ros::SubscribeOptions opt_pgv = ros::SubscribeOptions::create<reader::pos>
-    ("/position_info", 10, pgvCallback, ros::VoidPtr(), &g_queue);
-  
-  ros::Subscriber sub = n.subscribe(opt_test);
-  ros::Subscriber sub2 = n.subscribe(opt_pgv);
-  
-  // ros::Subscriber sub2 = n.subscribe("gps_info", 1, gpsMainQueue);
+    ("/position_info", 10, pgvCallback, ros::VoidPtr(), &pgv_queue);
+  ros::Subscriber sub_pgv = n.subscribe(opt_pgv);
+  boost::thread PGV_thread(pgvCallbackThread); 
 
-  boost::thread PGV_thread(callbackThread); 
+  // 调度信息订阅: 主线程
+
+
   ROS_INFO_STREAM("Main thread id=" << boost::this_thread::get_id());
  
   ros::Rate r(20);
