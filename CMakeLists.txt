@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(topic_demo)
+project(car_core)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   reader
 )
+find_package(Eigen3 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -120,6 +121,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
@@ -151,7 +153,7 @@ include_directories(
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
-
+add_definitions(${EIGEN_DEFINITIONS})
 add_executable(talker src/talker.cpp )
 #必须添加add_dependencies，否则找不到自定义的msg产生的头文件
 add_dependencies(talker topic_demo_generate_messages_cpp)

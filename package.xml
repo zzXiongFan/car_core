@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>topic_demo</name>
+  <name>car_core</name>
   <version>0.0.0</version>
   <description>The publish_subscribe_demo package</description>
 
