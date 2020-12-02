@@ -21,6 +21,7 @@
 // #include <geometry_msgs
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/Twist.h>
 // eigen
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -71,6 +72,51 @@ public:
   Position getLocation() {
     ReadLock lock(rwMutex_);
     return position_;
+  }
+  Goal getCurGoal() {
+    ReadLock lock(rwMutex_);
+    // 此时没有具体的任务，直接返回虚假的目标
+    Goal temp;
+    temp.x = position_.x;
+    temp.y = position_.y;
+    temp.angle = position_.angle;
+    // X轴前进 1m
+    temp.x = 1;
+    // X轴前进 1m
+    // temp.y = 1;
+    // 原地旋转90°
+    // temp.angle = PI/2;
+    return temp;
+  }
+  geometry_msgs::Twist getTwist() {
+    // 创建并返回消息
+    ReadLock lock(rwMutex_);
+    geometry_msgs::Twist twist;
+    twist.linear.x = 0;
+    twist.angular.z = 0;
+    // 获取当前的坐标信息
+    Position cur_position = position_;
+    // 获取当前的目标信息
+    Goal cur_goal = getCurGoal();
+    // 通过距离和角度差值判断当前的状态
+    
+    if( abs(position_.x - cur_goal.x) < 0.3 && abs(position_.y - cur_goal.y) < 0.3 ) {
+      // 目前在旋转状态
+      if( abs(cur_goal.angle - position_.angle) > PI/5 ) {
+        twist.angular.z = cur_goal.angle > position_.angle ? 0.6 : -0.6;
+      } else {
+        twist.angular.z = cur_goal.angle > position_.angle ? 0.3 : -0.3;
+      }
+    } else {
+      // 目前在直行状态
+      if( sqrt(pow(position_.x - cur_goal.x, 2) + pow(position_.y - cur_goal.y, 2)) > 0.5 ) {
+        twist.linear.x = 0.6;
+      } else {
+        twist.linear.x = 0.3;
+      }
+    }
+    std::cout << "liner = "<< twist.linear.x <<  "  angular : " << twist.angular.z << std::endl ;
+    return twist;
   }
   void setLocation(float x, float y, float angle, float time) {
     // PGV赢更新，更新所有参数
@@ -239,19 +285,29 @@ int main(int argc, char **argv)
   ros::Subscriber sub_odom = n.subscribe(opt_odom);
   boost::thread ODOM_thread(odomCallbackThread); 
 
+  // 主进程添加消息发布逻辑
+  ros::Publisher pub = n.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
+
 
   ROS_INFO_STREAM("Main thread id=" << boost::this_thread::get_id());
  
+  // boost::thread PUB_thread(PubCallbackThread); 
   ros::Rate r(20);
   while (n.ok())
   {
     // 主程序循环：计算当前位置与目标点的距离，生成控制指令
+    // 发布
+    // ROS_INFO("Talker: GPS: x = %f, y = %f ",  msg.x ,msg.y);
+    //以1Hz的频率发布msg
+    // pub.publish();
+    pub.publish(loc.getTwist());
+    // std::cout<< 1<< std::endl;
     r.sleep();
   }
  
   // 等待对应的线程结束
   PGV_thread.join();
- 
+  ODOM_thread.join();
   return 0;
 }
 
