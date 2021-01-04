@@ -270,7 +270,7 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "listener");
+  ros::init(argc, argv, "car_core");
   ros::NodeHandle n;
 
   // PGV 订阅处理线程

@@ -159,9 +159,9 @@ add_definitions(${EIGEN_DEFINITIONS})
 # add_dependencies(talker topic_demo_generate_messages_cpp)
 # target_link_libraries(talker ${catkin_LIBRARIES})
 
-add_executable(listener src/listener.cpp )
-add_dependencies(listener topic_demo_generate_messages_cpp)
-target_link_libraries(listener ${catkin_LIBRARIES})
+add_executable(car_core src/car_core.cpp )
+add_dependencies(car_core topic_demo_generate_messages_cpp)
+target_link_libraries(car_core ${catkin_LIBRARIES})
 
 #############
 ## Install ##
