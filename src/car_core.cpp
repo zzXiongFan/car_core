@@ -100,19 +100,19 @@ public:
     Goal cur_goal = getCurGoal();
     // 通过距离和角度差值判断当前的状态
     
-    if( abs(position_.x - cur_goal.x) < 0.3 && abs(position_.y - cur_goal.y) < 0.3 ) {
+    if( abs(position_.x - cur_goal.x) < 0.15 && abs(position_.y - cur_goal.y) < 0.15 ) {
       // 目前在旋转状态
-      if( abs(cur_goal.angle - position_.angle) > PI/5 ) {
+      if( abs(cur_goal.angle - position_.angle) > 0.1 ) {
         twist.angular.z = cur_goal.angle > position_.angle ? 0.6 : -0.6;
       } else {
         twist.angular.z = cur_goal.angle > position_.angle ? 0.3 : -0.3;
       }
     } else {
       // 目前在直行状态
-      if( sqrt(pow(position_.x - cur_goal.x, 2) + pow(position_.y - cur_goal.y, 2)) > 0.5 ) {
+      if( sqrt(pow(position_.x - cur_goal.x, 2) + pow(position_.y - cur_goal.y, 2)) > 0.05 ) {
         twist.linear.x = 0.6;
       } else {
-        twist.linear.x = 0.3;
+        twist.linear.x = 0;
       }
     }
     std::cout << "liner = "<< twist.linear.x <<  "  angular : " << twist.angular.z << std::endl ;
@@ -205,8 +205,8 @@ void pgvCallbackThread() {
   ros::NodeHandle n;
   while (n.ok())
   {
-    // 执行所有回调
-    pgv_queue.callAvailable(ros::WallDuration(0));
+    // 执行所有回调: 回调等待周期统一为回调一个周期的长度
+    pgv_queue.callAvailable(ros::WallDuration(0.1));
   }
 }
 
@@ -223,8 +223,8 @@ void odomCallbackThread() {
   ros::NodeHandle n;
   while (n.ok())
   {
-    // 执行所有回调
-    odom_queue.callAvailable(ros::WallDuration(0));
+    // 执行所有回调: 回调等待周期统一为回调一个周期的长度
+    odom_queue.callAvailable(ros::WallDuration(0.05));
   }
 }
 
@@ -245,7 +245,7 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     init = true;
   }
   double last_z = last_odom_.quater.toRotationMatrix().eulerAngles(2, 1, 0)[0];
-  // TODO: 确定此处的正反
+  // TODO: 确定此处的正反: 使用更优雅的方式
   double diff_angle = cur_z - last_z;
   double x = msg->pose.pose.position.x - last_odom_.x;
   double y = msg->pose.pose.position.y - last_odom_.y;
