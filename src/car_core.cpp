@@ -29,6 +29,8 @@
 #include <Eigen/StdVector>
 #include <Eigen/LU>
 
+#include <math.h>
+
 // odom 信息
 typedef struct {
   float x;
@@ -45,6 +47,12 @@ typedef struct {
   // 上次步进时间
   float last_time;
 }Position;
+
+typedef boost::shared_lock<boost::shared_mutex> ReadLock;
+typedef boost::lock_guard<boost::shared_mutex> WriteLock;
+#define PI       3.14159265358979323846   // pi
+#define BAIS     0.00000000000000000001   // 除数偏差
+
 // 全局 task 信息
 typedef struct {
   float x;
@@ -52,10 +60,31 @@ typedef struct {
   float angle;
 }Goal;
 
+float CalculateGoalAngle(Goal cur, Goal goal) {
+  float delt_x = goal.x - cur.x;
+  float delt_y = goal.y - cur.y;
+  float goal_angle = (float)atan(delt_y / (delt_x + BAIS));
+  goal_angle = goal.x < cur.x ? goal_angle + PI : goal_angle;
+  return goal_angle;
+}
 
-typedef boost::shared_lock<boost::shared_mutex> ReadLock;
-typedef boost::lock_guard<boost::shared_mutex> WriteLock;
-#define PI       3.14159265358979323846   // pi
+float CalculateTwist(float cur, float goal) {
+  if( abs(cur - goal) <= 0.1) return 0;
+  float theta_n = goal - cur;
+  theta_n = theta_n < 0 ? theta_n + 2*PI : theta_n;
+  float theta_p = cur - goal;
+  theta_p = theta_p < 0 ? theta_p + 2*PI : theta_p;
+  // 注意方向问题
+  if(theta_p < theta_n) return -3.0;
+  return 3.0;
+}
+
+float CalculateDistance(Goal p1, Goal p2) {
+  return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
+}
+
+
+
 // 上次的 odom 信息
 Odom last_odom_;
 bool init = false;
@@ -65,8 +94,12 @@ class Location
 {
 private:
   Position position_;
+  Goal goal_;
   boost::shared_mutex rwMutex_;
   std::vector<Goal> task;
+  int taskIndex;
+  bool angleReady;
+  bool transReady;
 public:
   Location(/* args */);
   Position getLocation() {
@@ -90,32 +123,50 @@ public:
   }
   geometry_msgs::Twist getTwist() {
     // 创建并返回消息
-    ReadLock lock(rwMutex_);
+    WriteLock lock(rwMutex_);
+    // 创建消息类型
     geometry_msgs::Twist twist;
     twist.linear.x = 0;
     twist.angular.z = 0;
     // 获取当前的坐标信息
-    Position cur_position = position_;
-    // 获取当前的目标信息
-    Goal cur_goal = getCurGoal();
-    // 通过距离和角度差值判断当前的状态
-    
-    if( abs(position_.x - cur_goal.x) < 0.15 && abs(position_.y - cur_goal.y) < 0.15 ) {
-      // 目前在旋转状态
-      if( abs(cur_goal.angle - position_.angle) > 0.1 ) {
-        twist.angular.z = cur_goal.angle > position_.angle ? 0.6 : -0.6;
-      } else {
-        twist.angular.z = cur_goal.angle > position_.angle ? 0.3 : -0.3;
-      }
-    } else {
-      // 目前在直行状态
-      if( sqrt(pow(position_.x - cur_goal.x, 2) + pow(position_.y - cur_goal.y, 2)) > 0.05 ) {
-        twist.linear.x = 0.6;
-      } else {
-        twist.linear.x = 0;
-      }
+    Goal cur;
+    cur.x = position_.x;
+    cur.y = position_.y;
+    cur.angle = position_.angle;
+    twist.angular.z = CalculateTwist(cur.angle, goal_.angle);
+    if(twist.angular.z == 0.0) angleReady = true;
+
+    if(angleReady && !transReady) {
+      float distance = CalculateDistance(cur, goal_);
+      float theta = atan(0.5 / (distance + BAIS));
+      twist.angular.z = theta > 0.3 ? 3 * theta / abs(theta) : 0;
+      twist.linear.x = 0.6;
     }
-    std::cout << "liner = "<< twist.linear.x <<  "  angular : " << twist.angular.z << std::endl ;
+
+    // 前进的逻辑不应该停止
+
+
+    // Position cur_position = position_;
+    // // 获取当前的目标信息
+    // Goal cur_goal = getCurGoal();
+    // // 通过距离和角度差值判断当前的状态
+    
+    // if( abs(position_.x - cur_goal.x) < 0.15 && abs(position_.y - cur_goal.y) < 0.15 ) {
+    //   // 目前在旋转状态
+    //   if( abs(cur_goal.angle - position_.angle) > 0.1 ) {
+    //     twist.angular.z = cur_goal.angle > position_.angle ? 0.6 : -0.6;
+    //   } else {
+    //     twist.angular.z = cur_goal.angle > position_.angle ? 0.3 : -0.3;
+    //   }
+    // } else {
+    //   // 目前在直行状态
+    //   if( sqrt(pow(position_.x - cur_goal.x, 2) + pow(position_.y - cur_goal.y, 2)) > 0.05 ) {
+    //     twist.linear.x = 0.6;
+    //   } else {
+    //     twist.linear.x = 0;
+    //   }
+    // }
+    // std::cout << "liner = "<< twist.linear.x <<  "  angular : " << twist.angular.z << std::endl ;
     return twist;
   }
   void setLocation(float x, float y, float angle, float time) {
@@ -130,6 +181,23 @@ public:
     std::cout << "Recived PGV update: [ " << position_.x << ", " << position_.y << ", " << position_.angle  << "]" << std::endl;
     // ROS_INFO_STREAM("I heard: [ " << time << "] in thread [" << boost::this_thread::get_id() << "]");
     // 是否需要解锁?
+
+    // 计算运行状态
+    Goal cur;
+    cur.x = x;
+    cur.y = y;
+    cur.angle = angle;
+    float distance = CalculateDistance(cur, goal_);
+    if(distance < 0.50 || taskIndex < 0 ) {
+      // 看到目标点，且距离小于 0.5 m  更新位置信息
+      angleReady = false;
+      transReady = false;
+      goal_.x = task[taskIndex +1].x;
+      goal_.y = task[taskIndex +1].y;
+      goal_.angle = CalculateGoalAngle(cur, goal_);
+      taskIndex ++;
+      std::cout << "Goal update: [ " << goal_.x << ", " << goal_.y << ", " << goal_.angle  << "]" << std::endl;
+    }
   }
 
   // 差量更新当前位置
@@ -156,11 +224,31 @@ Location::Location(/* args */)
   // 初始化时标记当前时间为负值
   position_.last_time = -1;
 
+  angleReady = true;
+  transReady = true;
+
+  taskIndex = -1;
+
+  goal_.x = 0;
+  goal_.y = 0;
+  goal_.angle = 0;
+
+  // 填充初始目标
+  Goal temp = {.x = 0, .y = 0, .angle = 0};
+  task.push_back(temp);
+  temp = {.x = 0, .y = 1, .angle = 0};
+  task.push_back(temp);
+  temp = {.x = 1, .y = 1, .angle = 0};
+  task.push_back(temp);
+  temp = {.x = 1, .y = 0, .angle = 0};
+  task.push_back(temp);
+
   // last_position_.x = 0;
   // last_position_.y = 0;
   // last_position_.angle = 0;
   // // 初始化时标记当前时间为负值
   // last_position_.last_time = -1;
+  
 }
 
 // 创建消息队列
