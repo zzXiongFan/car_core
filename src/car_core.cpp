@@ -65,6 +65,7 @@ float CalculateGoalAngle(Goal cur, Goal goal) {
   float delt_y = goal.y - cur.y;
   float goal_angle = (float)atan(delt_y / (delt_x + BAIS));
   goal_angle = goal.x < cur.x ? goal_angle + PI : goal_angle;
+  // 修复负转角的出现
   return goal_angle < 0 ? goal_angle + 2*PI : goal_angle;
 }
 
@@ -74,7 +75,7 @@ float CalculateTwist(float cur, float goal) {
   theta_n = theta_n < 0 ? theta_n + 2*PI : theta_n;
   float theta_p = cur - goal;
   theta_p = theta_p < 0 ? theta_p + 2*PI : theta_p;
-  // 注意方向问题
+  // 注意方向问题: 全面提升了速度
   if(theta_p < theta_n) return 4.0;
   return -4.0;
 }
@@ -137,10 +138,17 @@ public:
     if(twist.angular.z == 0.0) angleReady = true;
 
     if(angleReady && !transReady) {
-      // float distance = CalculateDistance(cur, goal_);
-      // float theta = atan(0.5 / (distance + BAIS));
-      // twist.angular.z = theta > 0.3 ? 3 * theta / abs(theta) : 0;
-      twist.angular.z = 0;
+      float distance = CalculateDistance(cur, goal_);
+      if(distance > 0.6) {
+        // 距离在 0.6m 外时，继续微调方向
+        // float theta_c = atan(0.05 / (distance + BAIS));
+        float theta_g = CalculateGoalAngle(cur, goal_);
+        twist.angular.z = cur.angle < theta_g ? -3.0 : 3.0;
+      } else {
+        twist.angular.z = 0;
+      }
+      
+      
       twist.linear.x = 1.5;
     }
 
