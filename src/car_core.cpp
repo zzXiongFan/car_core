@@ -65,7 +65,7 @@ float CalculateGoalAngle(Goal cur, Goal goal) {
   float delt_y = goal.y - cur.y;
   float goal_angle = (float)atan(delt_y / (delt_x + BAIS));
   goal_angle = goal.x < cur.x ? goal_angle + PI : goal_angle;
-  return goal_angle;
+  return goal_angle < 0 ? goal_angle + 2*PI : goal_angle;
 }
 
 float CalculateTwist(float cur, float goal) {
@@ -75,8 +75,8 @@ float CalculateTwist(float cur, float goal) {
   float theta_p = cur - goal;
   theta_p = theta_p < 0 ? theta_p + 2*PI : theta_p;
   // 注意方向问题
-  if(theta_p < theta_n) return -3.0;
-  return 3.0;
+  if(theta_p < theta_n) return 4.0;
+  return -4.0;
 }
 
 float CalculateDistance(Goal p1, Goal p2) {
@@ -137,10 +137,11 @@ public:
     if(twist.angular.z == 0.0) angleReady = true;
 
     if(angleReady && !transReady) {
-      float distance = CalculateDistance(cur, goal_);
-      float theta = atan(0.5 / (distance + BAIS));
-      twist.angular.z = theta > 0.3 ? 3 * theta / abs(theta) : 0;
-      twist.linear.x = 0.6;
+      // float distance = CalculateDistance(cur, goal_);
+      // float theta = atan(0.5 / (distance + BAIS));
+      // twist.angular.z = theta > 0.3 ? 3 * theta / abs(theta) : 0;
+      twist.angular.z = 0;
+      twist.linear.x = 1.5;
     }
 
     // 前进的逻辑不应该停止
@@ -178,7 +179,7 @@ public:
     position_.angle = angle;
     position_.last_time = time;
     // 此处不记录时间
-    std::cout << "Recived PGV update: [ " << position_.x << ", " << position_.y << ", " << position_.angle  << "]" << std::endl;
+    // std::cout << "Recived PGV update: [ " << position_.x << ", " << position_.y << ", " << position_.angle  << "]" << std::endl;
     // ROS_INFO_STREAM("I heard: [ " << time << "] in thread [" << boost::this_thread::get_id() << "]");
     // 是否需要解锁?
 
@@ -195,8 +196,8 @@ public:
       goal_.x = task[taskIndex +1].x;
       goal_.y = task[taskIndex +1].y;
       goal_.angle = CalculateGoalAngle(cur, goal_);
-      taskIndex ++;
-      std::cout << "Goal update: [ " << goal_.x << ", " << goal_.y << ", " << goal_.angle  << "]" << std::endl;
+      taskIndex  = (taskIndex + 1)%4;
+      std::cout << "Position: [ " << position_.x << ", " << position_.y << ", " << position_.angle  << "]" << "Goal update: [ " << goal_.x << ", " << goal_.y << ", " << goal_.angle  << "]" << std::endl;
     }
   }
 
@@ -210,7 +211,8 @@ public:
     if(position_.angle > 2 * PI) position_.angle = position_.angle - 2 * PI;
     else if(position_.angle < 0) position_.angle = position_.angle + 2 * PI;
     position_.last_time = time;
-    std::cout << "Recived pose update: [ " << position_.x << ", " << position_.y << ", " << position_.angle  << "]" << std::endl;
+    // std::cout << "Recived pose update: [ " << position_.x << ", " << position_.y << ", " << position_.angle  << "]" << std::endl;
+    std::cout << "Position: [ " << position_.x << ", " << position_.y << ", " << position_.angle  << "]" << "\tGoal update: [ " << goal_.x << ", " << goal_.y << ", " << goal_.angle  << "]  angleReady:" << angleReady << std::endl;
   }
 };
 
@@ -236,11 +238,11 @@ Location::Location(/* args */)
   // 填充初始目标
   Goal temp = {.x = 0, .y = 0, .angle = 0};
   task.push_back(temp);
-  temp = {.x = 0, .y = 1, .angle = 0};
+  temp = {.x = 0, .y = 0.7, .angle = 0};
   task.push_back(temp);
-  temp = {.x = 1, .y = 1, .angle = 0};
+  temp = {.x = 0.7, .y = 0.7, .angle = 0};
   task.push_back(temp);
-  temp = {.x = 1, .y = 0, .angle = 0};
+  temp = {.x = 0.7, .y = 0, .angle = 0};
   task.push_back(temp);
 
   // last_position_.x = 0;
@@ -353,7 +355,7 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   last_odom_.quater = cur_quaternion4;
 
   // 更新位置信息
-  loc.updateLocation(x, y, diff_angle, 1);
+  loc.updateLocation(x, y, -diff_angle, 1);
 }
 
 int main(int argc, char **argv)
