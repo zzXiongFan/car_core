@@ -1,0 +1,23 @@
+<launch>
+  <!-- 启动主节点 -->
+  <node pkg="car_core" type="car_core" name="car_core" output="screen">
+    <!-- 是否为测试模式 -->
+    <param name="test_mode" value="true" />
+    <!-- 测试模式 路径文件 -->
+    <param name="testPath_file" value="$(find car_core)/src/test_path.txt" />
+    <!-- 小车到达阈值 -->
+    <param name="arrive_threshold" value="0.5" />
+    <!-- 转角 pid 增益 -->
+    <param name="angle_adjust_gain" value="5" />
+    <!-- 最大转向速度 -->
+    <param name="max_twist" value="4" />
+    <!-- 转向递进步长 -->
+    <param name="twist_step" value="0.4" />
+    <!-- 初次转向调整阈值 -->
+    <param name="twist_threshold" value="0.1" />
+    <!-- 最大前向速度 -->
+    <param name="max_forward" value="5" />
+    <!-- 前向调整步长 -->
+    <param name="forward_step" value="0.2" />
+  </node>
+</launch>
