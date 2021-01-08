@@ -57,6 +57,8 @@ private:
   double calculateForward(GlobalPosition cur_, GlobalPosition goal_);
   // 计算 前行时方向微调偏差
   double calculateTwistWithRedundancy(GlobalPosition cur_, GlobalPosition goal_);
+  // 计算缓变控制量
+  geometry_msgs::Twist getNextTwist(geometry_msgs::Twist last, geometry_msgs::Twist goal);
 public:
   Controller();
   ~Controller();
@@ -64,6 +66,8 @@ public:
   void init(ros::NodeHandle nh);
   // 切换小车状态
   void switchCarStatus(car_status status);
+  // 切换二维码状态
+  void switchQRCodeStatus(bool status);
   // update Goal 更新目标点
   void updateGoal();
   // 获取控制参数

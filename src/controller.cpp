@@ -80,17 +80,39 @@ double Controller::calculateTwist(GlobalPosition cur_, GlobalPosition goal_) {
   return -MAX_TWIST;
 }
 
+geometry_msgs::Twist Controller::getNextTwist(geometry_msgs::Twist last, geometry_msgs::Twist goal) {
+  geometry_msgs::Twist res;
+  res.linear.x = last.linear.x;
+  res.angular.z = last.angular.z;
+  if(goal.angular.z > last.angular.z) {
+    // 加速阶段
+    res.angular.z = std::min(goal.angular.z, last.angular.z + TWIST_STEP);
+  } else {
+    res.angular.z = std::max(goal.angular.z, last.angular.z - TWIST_STEP);
+  }
+  // 角度调整结束
+  if(res.angular.z == goal.angular.z) {
+    if(goal.linear.x > last.linear.x) {
+      res.linear.x = std::min(goal.linear.x, last.linear.x + FORWARD_STEP);
+    } else {
+      res.linear.x = std::max(goal.linear.x, last.linear.x - FORWARD_STEP);
+    }
+  }
+  return res;
+}
+
 double Controller::calculateForward(GlobalPosition cur_, GlobalPosition goal_) {
   double distance = calculateDistance(cur_, goal_);
+  std::cout<< distance <<std::endl;
   // 待返回量
   double forward = MAX_FORWARD;
   // 当且仅当以下连个条件满足时，减速并切换到下一状态
   if( distance < 0.5 && isGetQRCode_) {
     // 减速阶段
-    forward = std::max(0.0, last_twist_.linear.x - FORWARD_STEP);
+    switchQRCodeStatus(false);
+    forward = 0;
+    return forward;
   }
-  // 缓加速
-  forward = std::min(MAX_FORWARD, last_twist_.linear.x + FORWARD_STEP);
   return forward;
 }
 
@@ -117,13 +139,17 @@ double Controller::calculateTwistWithRedundancy(GlobalPosition cur_, GlobalPosit
   if( diff > redundancy || (-diff) > redundancy) {
     // 角度过大，需要顺时针转向: diff 自带方向性
     twist = diff * ANGLE_ADJUST_GAIN;
-    // twist = std::min( diff * ANGLE_ADJUST_GAIN, MAX_TWIST);
+    twist = std::min( diff * ANGLE_ADJUST_GAIN, MAX_TWIST * 0.25);
   }
   return twist;
 }
 
 void Controller::switchCarStatus(car_status status) {
   status_ = status;
+}
+
+void Controller::switchQRCodeStatus(bool status) {
+  isGetQRCode_ = status;
 }
 
 void Controller::updateGoal() {
@@ -161,17 +187,17 @@ geometry_msgs::Twist Controller::getTwist() {
     // 计算理论旋转矢量
     double twist_z = calculateTwist(cur, goal_);
     // std::cout<<twist_z << " last: "<< last_twist_.angular.z<<std::endl;
-    double twist_z_abs = fabs(twist_z);
-    if(twist_z_abs >= fabs(last_twist_.angular.z)) {
-      // std::cout<<"twist up "<< last_twist_.angular.z <<std::endl;
-      twist_z_abs = std::min( MAX_TWIST, fabs(last_twist_.angular.z) + TWIST_STEP );
-    } else {
-      twist_z_abs = std::max(0.0, fabs(last_twist_.angular.z) - TWIST_STEP);
-    }
-    if(twist_z_abs == 0) {
+    // double twist_z_abs = fabs(twist_z);
+    // if(twist_z_abs >= fabs(last_twist_.angular.z)) {
+    //   // std::cout<<"twist up "<< last_twist_.angular.z <<std::endl;
+    //   twist_z_abs = std::min( MAX_TWIST, fabs(last_twist_.angular.z) + TWIST_STEP );
+    // } else {
+    //   twist_z_abs = std::max(0.0, fabs(last_twist_.angular.z) - TWIST_STEP);
+    // }
+    if(twist_z == 0) {
       switchCarStatus(car_status::FORWARD);
     }
-    twist.angular.z = twist_z >=0 ? twist_z_abs : - twist_z_abs;
+    twist.angular.z = twist_z;
     // std::cout<<twist.angular.z<<std::endl;
     break;
   }
@@ -194,8 +220,8 @@ geometry_msgs::Twist Controller::getTwist() {
     break;
   }
   // 记录当前发送的状态
-  last_twist_.angular.z = twist.angular.z;
-  last_twist_.linear.x = twist.linear.x;
+  twist = getNextTwist(last_twist_, twist);
+  last_twist_ = twist;
   std::cout<< "[CONTROLLER] Current Position: [ " << cur.x << ",\t"<< cur.y << ",\t" << cur.angle << " ]\tGoal: [ "
            << goal_.x << ",\t" << goal_.y << ",\t" << goal_.angle << " ]"
            << std::endl;

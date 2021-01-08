@@ -16,6 +16,7 @@ void pgvCallback(const reader::pos::ConstPtr &msg) {
   // std::cout<< "[PGV] recived: [ \t" << msg->x << ",\t"<< msg->y << ",\t"<< msg->angle / 180 * PI << "\t ]" <<std::endl;
   GlobalPosition pos = {.x = msg->x, .y = msg->y, .angle = msg->angle / 180 * PI};
   loc.setPositon(pos);
+  controller.switchQRCodeStatus(true);
   // 调用控制器查看是否到达节点
   if( loc.isArrive() || !init ) {
     init = true;

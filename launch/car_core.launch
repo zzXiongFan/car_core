@@ -8,7 +8,7 @@
     <!-- 小车到达阈值 -->
     <param name="arrive_threshold" value="0.5" />
     <!-- 转角 pid 增益 -->
-    <param name="angle_adjust_gain" value="5" />
+    <param name="angle_adjust_gain" value="2" />
     <!-- 最大转向速度 -->
     <param name="max_twist" value="4" />
     <!-- 转向递进步长 -->
