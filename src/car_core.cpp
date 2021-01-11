@@ -75,10 +75,10 @@ int main(int argc, char **argv)
   boost::thread PGV_thread(pgvCallbackThread); 
 
   // Odom 订阅处理线程
-  // ros::SubscribeOptions opt_odom = ros::SubscribeOptions::create<nav_msgs::Odometry>
-  //   ("/odom", 10, odomCallback, ros::VoidPtr(), &odom_queue);
-  // ros::Subscriber sub_odom = n.subscribe(opt_odom);
-  // boost::thread ODOM_thread(odomCallbackThread); 
+  ros::SubscribeOptions opt_odom = ros::SubscribeOptions::create<nav_msgs::Odometry>
+    ("/odom", 10, odomCallback, ros::VoidPtr(), &odom_queue);
+  ros::Subscriber sub_odom = n.subscribe(opt_odom);
+  boost::thread ODOM_thread(odomCallbackThread); 
 
   // 主进程添加消息发布逻辑
   ros::Publisher pub = n.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
@@ -96,7 +96,7 @@ int main(int argc, char **argv)
  
   // 等待对应的线程结束
   PGV_thread.join();
-  // ODOM_thread.join();
+  ODOM_thread.join();
   return 0;
 }
 
