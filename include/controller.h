@@ -38,12 +38,16 @@ private:
   double ANGLE_ADJUST_GAIN = 0;
   // 最大转向速度
   double MAX_TWIST = 0;
+  // 最小转向速度
+  double MIN_TWIST = 0;
   // 转向变化步长
   double TWIST_STEP = 0;
   // 初次调整转向阈值
   double TWIST_THRESHOLD = 0.1;
   // 最大前向速度
   double MAX_FORWARD = 0;
+  // 最大前向速度
+  double MIN_FORWARD = 0;
   // 转向步长变化
   double FORWARD_STEP = 0;
   // 测试模式
@@ -55,7 +59,7 @@ private:
   double calculateTwist(GlobalPosition cur_, GlobalPosition goal_);
   // 计算 前行控制矢量
   double calculateForward(GlobalPosition cur_, GlobalPosition goal_);
-  // 计算 前行时方向微调偏差
+  // 根据当前位置计算 前行时方向微调偏差
   double calculateTwistWithRedundancy(GlobalPosition cur_, GlobalPosition goal_);
   // 计算缓变控制量
   geometry_msgs::Twist getNextTwist(geometry_msgs::Twist last, geometry_msgs::Twist goal);
