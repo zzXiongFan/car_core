@@ -86,11 +86,12 @@ add_library(carLocation
 )
 
 add_definitions(${EIGEN_DEFINITIONS})
-# add_executable(talker src/talker.cpp )
+add_executable(test1 src/test.cpp )
 #必须添加add_dependencies，否则找不到自定义的msg产生的头文件
 # add_dependencies(talker topic_demo_generate_messages_cpp)
 # target_link_libraries(talker ${catkin_LIBRARIES})
 
+# add_executable(test src/test.cpp)
 add_executable(car_core src/car_core.cpp  src/location.cpp src/controller.cpp)
 add_dependencies(car_core topic_demo_generate_messages_cpp)
 target_link_libraries(car_core 
