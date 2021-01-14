@@ -9,18 +9,31 @@
     <param name="arrive_threshold" value="0.5" />
     <!-- 转角 pid 增益 -->
     <param name="angle_adjust_gain" value="10" />
+
+    <!-- 转向速度控制 -->
     <!-- 最大转向速度 -->
     <param name="max_twist" value="15" />
     <!-- 最小转向速度: 推荐值：3 -->
     <param name="min_twist" value="3" />
+    <!-- 转向最高速阈值 -->
+    <param name="max_twist_threshold" value="1" />
+    <!-- 转向最低速阈值 -->
+    <param name="min_twist_threshold" value="0.5" />
     <!-- 转向递进步长 -->
     <param name="twist_step" value="0.4" />
     <!-- 初次转向调整阈值 -->
     <param name="twist_threshold" value="0.2" />
+
+
+    <!-- 前向速度控制 -->
     <!-- 最大前向速度 -->
     <param name="max_forward" value="15" />
     <!-- 最小前向速度, 推荐值：0.6 -->
-    <param name="min_forward" value="5" />
+    <param name="min_forward" value="2" />
+    <!-- 最高速阈值 -->
+    <param name="max_forward_threshold" value="0.6" />
+    <!-- 最低速阈值 -->
+    <param name="min_forward_threshold" value="0.5" />
     <!-- 前向调整步长 -->
     <param name="forward_step" value="0.4" />
   </node>

@@ -40,6 +40,10 @@ private:
   double MAX_TWIST = 0;
   // 最小转向速度
   double MIN_TWIST = 0;
+  // 最高速度阈值
+  double MAX_TWIST_THRESHOLD = 0;
+  // 最低速度阈值
+  double MIN_TWIST_THRESHOLD = 0;
   // 转向变化步长
   double TWIST_STEP = 0;
   // 初次调整转向阈值
@@ -48,6 +52,10 @@ private:
   double MAX_FORWARD = 0;
   // 最大前向速度
   double MIN_FORWARD = 0;
+  // 最高速度阈值
+  double MAX_FORWARD_THRESHOLD = 0;
+  // 最低速度阈值
+  double MIN_FORWARD_THRESHOLD = 0;
   // 转向步长变化
   double FORWARD_STEP = 0;
   // 测试模式
