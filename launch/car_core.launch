@@ -6,35 +6,35 @@
     <!-- 测试模式 路径文件 -->
     <param name="testPath_file" value="$(find car_core)/src/test_path.txt" />
     <!-- 小车到达阈值 -->
-    <param name="arrive_threshold" value="0.5" />
+    <param name="arrive_threshold" value="0.1" />
     <!-- 转角 pid 增益 -->
     <param name="angle_adjust_gain" value="10" />
 
     <!-- 转向速度控制 -->
     <!-- 最大转向速度 -->
-    <param name="max_twist" value="15" />
+    <param name="max_twist" value="30" />
     <!-- 最小转向速度: 推荐值：3 -->
-    <param name="min_twist" value="3" />
+    <param name="min_twist" value="8" />
     <!-- 转向最高速阈值 -->
     <param name="max_twist_threshold" value="1" />
     <!-- 转向最低速阈值 -->
-    <param name="min_twist_threshold" value="0.5" />
+    <param name="min_twist_threshold" value="0.1" />
     <!-- 转向递进步长 -->
-    <param name="twist_step" value="0.4" />
+    <param name="twist_step" value="3" />
     <!-- 初次转向调整阈值 -->
-    <param name="twist_threshold" value="0.2" />
+    <param name="twist_threshold" value="0.05" />
 
 
     <!-- 前向速度控制 -->
     <!-- 最大前向速度 -->
-    <param name="max_forward" value="15" />
+    <param name="max_forward" value="20" />
     <!-- 最小前向速度, 推荐值：0.6 -->
-    <param name="min_forward" value="2" />
+    <param name="min_forward" value="4" />
     <!-- 最高速阈值 -->
     <param name="max_forward_threshold" value="0.6" />
     <!-- 最低速阈值 -->
-    <param name="min_forward_threshold" value="0.5" />
+    <param name="min_forward_threshold" value="0.1" />
     <!-- 前向调整步长 -->
-    <param name="forward_step" value="0.4" />
+    <param name="forward_step" value="1" />
   </node>
 </launch>

@@ -110,8 +110,8 @@ double Controller::calculateTwist(GlobalPosition cur_, GlobalPosition goal_) {
   float theta_p = cur - goal;
   theta_p = theta_p < 0 ? theta_p + 2*PI : theta_p;
   // zzxiongfan: 新增，根据距离远近控制速度
-  if(theta_p < theta_n) return twist;
-  return -twist;
+  if(theta_p < theta_n) return -twist;
+  return twist;
 }
 
 geometry_msgs::Twist Controller::getNextTwist(geometry_msgs::Twist last, geometry_msgs::Twist goal) {
@@ -175,7 +175,7 @@ double Controller::calculateTwistWithRedundancy(GlobalPosition cur_, GlobalPosit
   // 正常判断方向，并计算参数
   if( diff > redundancy || (-diff) > redundancy) {
     // 角度过大，需要顺时针转向: diff 自带方向性
-    twist = diff * ANGLE_ADJUST_GAIN;
+    twist = -diff * ANGLE_ADJUST_GAIN;
     // twist = std::min( diff * ANGLE_ADJUST_GAIN, MAX_TWIST * 0.25);
   }
   return twist;
@@ -191,7 +191,7 @@ void Controller::switchQRCodeStatus(bool status) {
 
 void Controller::updateGoal() {
   // 小车必须在停止状态： 为缓加减速提供空间
-  if(status_ != car_status::STOP) return;
+  // if(status_ != car_status::STOP) return;
   WriteLock lock(rwMutex_);
   taskIndex_ ++;
   // 检测到测试状态, 循环测试
