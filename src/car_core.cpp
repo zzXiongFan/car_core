@@ -18,8 +18,8 @@ void pgvCallback(const reader::pos::ConstPtr &msg) {
   loc.setPositon(pos);
   controller.switchQRCodeStatus(true);
   // 调用控制器查看是否到达节点
-  if( loc.isArrive() || !init ) {
-    init = true;
+  // [2021.01.20]zzxiongfan: 修改此处逻辑，以odom 为准，定位到二维码上方再进行转向
+  if( loc.isArrive() ) {
     ROS_INFO_STREAM("arrived");
     // TODO: 参数覆盖
     controller.updateGoal();
@@ -50,6 +50,11 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     .angle = cur_z
   };
   loc.setPositon(pos);
+  if( loc.isArrive() ) {
+    ROS_INFO_STREAM("arrived");
+    // TODO: 参数覆盖
+    controller.updateGoal();
+  }
 }
 
 int main(int argc, char **argv)

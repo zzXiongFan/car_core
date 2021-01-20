@@ -141,19 +141,21 @@ double Controller::calculateForward(GlobalPosition cur_, GlobalPosition goal_) {
   double forward = calculateCurSpeed(distance, MAX_FORWARD, MIN_FORWARD, MAX_FORWARD_THRESHOLD, MIN_FORWARD_THRESHOLD);
   // 当且仅当以下连个条件满足时，减速并切换到下一状态
   
-  if( distance < 0.4 && isGetQRCode_) {
-    // 减速阶段
-    switchQRCodeStatus(false);
-    forward = 0;
-    return forward;
-  }
+  // if( distance < 0.3 && isGetQRCode_) {
+  // 切换为减速状态
+  // if( distance < 0.3 ) {
+  //   // 减速阶段
+  //   switchQRCodeStatus(false);
+  //   forward = 0;
+  //   return forward;
+  // }
   return forward;
 }
 
 double Controller::calculateTwistWithRedundancy(GlobalPosition cur_, GlobalPosition goal_) {
   // 计算两点距离
   double distance = calculateDistance(cur_, goal_);
-  if(distance <= 0.4 && isGetQRCode_) return 0;
+  if(distance <= 0.3) return 0;
   // 计算当前位置的角度冗余量
   double redundancy = atan(0.05 / (distance + BAIS));
   // 计算当前角度的目标转向
@@ -221,7 +223,8 @@ geometry_msgs::Twist Controller::getTwist() {
     twist.linear.x = 0;
     // 计算理论旋转矢量
     double twist_z = calculateTwist(cur, goal_);
-    if(twist_z == 0) {
+    // fix: 完全停止再直行
+    if(twist_z == 0 && last_twist_.angular.z == 0) {
       // 转向结束，切换状态
       switchCarStatus(car_status::FORWARD);
     }
@@ -236,13 +239,14 @@ geometry_msgs::Twist Controller::getTwist() {
     twist.linear.x = calculateForward(cur, goal_);
     // 计算微调角度
     twist.angular.z = calculateTwistWithRedundancy(cur, goal_);
+    // 微调限速
     if(fabs(twist.angular.z) > 0.5) {
-      twist.linear.x = 0.6;
+      twist.linear.x = twist.linear.x / 2;
     }
     // twist.angular.z = 0;
-    if( twist.linear.x == 0 ) {
-      switchCarStatus(car_status::STOP);
-    }
+    // if( twist.linear.x == 0 ) {
+    //   switchCarStatus(car_status::STOP);
+    // }
     break;
   }
 
