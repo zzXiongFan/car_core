@@ -18,10 +18,14 @@ void pgvCallback(const reader::pos::ConstPtr &msg) {
   loc.setPositon(pos);
   controller.switchQRCodeStatus(true);
   // 调用控制器查看是否到达节点
-  if( loc.isArrive() || !init ) {
-    init = true;
+  // [2021.01.20]zzxiongfan: 修改此处逻辑，以odom 为准，定位到二维码上方再进行转向
+  if( loc.isArrive() && init ) {
     ROS_INFO_STREAM("arrived");
     // TODO: 参数覆盖
+    controller.updateGoal();
+  }
+  if(!init) {
+    init = true;
     controller.updateGoal();
   }
 }
@@ -41,19 +45,22 @@ void odomCallbackThread() {
 // odom 回调
 void odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   // 提取旋转四元数: 可能有问题
+  // 未就绪状态直接跳过，此时 ODOM 不可靠
+  if(!init) return;
   geometry_msgs::Quaternion cur_orientation = msg->pose.pose.orientation;
-  // 转换为 Eigen 四元数
-  Eigen::Quaterniond cur_quaternion4(cur_orientation.w, cur_orientation.x, cur_orientation.y, cur_orientation.z);
-  // 计算两者差值
-  double cur_z = cur_quaternion4.toRotationMatrix().eulerAngles(2, 1, 0)[0];
+  double cur_z = toEulerAngle(cur_orientation.x, cur_orientation.y, cur_orientation.z, cur_orientation.w).z;
 
   GlobalPosition pos = {
     .x = msg->pose.pose.position.x,
     .y = msg->pose.pose.position.y,
-    .angle = cur_z,
+    .angle = cur_z
   };
   loc.setPositon(pos);
-  // std::cout<< "[ODOM] recived: [ \t" << pos.x << ",\t"<< pos.y << ",\t"<< pos.angle << "\t ]" <<std::endl;
+  if( loc.isArrive() ) {
+    ROS_INFO_STREAM("arrived");
+    // TODO: 参数覆盖
+    controller.updateGoal();
+  }
 }
 
 int main(int argc, char **argv)
@@ -90,6 +97,7 @@ int main(int argc, char **argv)
   ros::Rate r(20);
   while (n.ok())
   {
+    // controller.getTwist();
     pub.publish(controller.getTwist());
     r.sleep();
   }
