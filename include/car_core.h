@@ -29,3 +29,6 @@ ros::CallbackQueue odom_queue;
 // Location2 loc;
 Location& loc = Location::getInstance();
 Controller controller;
+
+// car_core 初始化标志
+bool init = false;

@@ -19,9 +19,13 @@ void pgvCallback(const reader::pos::ConstPtr &msg) {
   controller.switchQRCodeStatus(true);
   // 调用控制器查看是否到达节点
   // [2021.01.20]zzxiongfan: 修改此处逻辑，以odom 为准，定位到二维码上方再进行转向
-  if( loc.isArrive() ) {
+  if( loc.isArrive() && init ) {
     ROS_INFO_STREAM("arrived");
     // TODO: 参数覆盖
+    controller.updateGoal();
+  }
+  if(!init) {
+    init = true;
     controller.updateGoal();
   }
 }
@@ -41,6 +45,8 @@ void odomCallbackThread() {
 // odom 回调
 void odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   // 提取旋转四元数: 可能有问题
+  // 未就绪状态直接跳过，此时 ODOM 不可靠
+  if(!init) return;
   geometry_msgs::Quaternion cur_orientation = msg->pose.pose.orientation;
   double cur_z = toEulerAngle(cur_orientation.x, cur_orientation.y, cur_orientation.z, cur_orientation.w).z;
 
