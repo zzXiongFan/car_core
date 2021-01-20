@@ -12,17 +12,17 @@
 
     <!-- 转向速度控制 -->
     <!-- 最大转向速度 -->
-    <param name="max_twist" value="15" />
+    <param name="max_twist" value="25" />
     <!-- 最小转向速度: 推荐值：3 -->
     <param name="min_twist" value="3" />
     <!-- 转向最高速阈值 -->
     <param name="max_twist_threshold" value="1" />
     <!-- 转向最低速阈值 -->
-    <param name="min_twist_threshold" value="0.5" />
+    <param name="min_twist_threshold" value="0.08" />
     <!-- 转向递进步长 -->
-    <param name="twist_step" value="0.4" />
+    <param name="twist_step" value="5" />
     <!-- 初次转向调整阈值 -->
-    <param name="twist_threshold" value="0.2" />
+    <param name="twist_threshold" value="0.04" />
 
 
     <!-- 前向速度控制 -->

@@ -50,6 +50,13 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     .angle = cur_z
   };
   loc.setPositon(pos);
+   if( loc.isArrive() || !init ) {
+	       init = true;
+	           ROS_INFO_STREAM("arrived");
+		       // TODO: 参数覆盖
+	     controller.updateGoal();
+   }
+		       //
 }
 
 int main(int argc, char **argv)

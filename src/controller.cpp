@@ -110,8 +110,8 @@ double Controller::calculateTwist(GlobalPosition cur_, GlobalPosition goal_) {
   float theta_p = cur - goal;
   theta_p = theta_p < 0 ? theta_p + 2*PI : theta_p;
   // zzxiongfan: 新增，根据距离远近控制速度
-  if(theta_p < theta_n) return twist;
-  return -twist;
+  if(theta_p < theta_n) return -twist;
+  return twist;
 }
 
 geometry_msgs::Twist Controller::getNextTwist(geometry_msgs::Twist last, geometry_msgs::Twist goal) {
@@ -120,7 +120,12 @@ geometry_msgs::Twist Controller::getNextTwist(geometry_msgs::Twist last, geometr
   res.angular.z = last.angular.z;
   if(goal.angular.z > last.angular.z) {
     // 加速阶段
-    res.angular.z = std::min(goal.angular.z, last.angular.z + TWIST_STEP);
+    if(last.linear.x <= 0) {
+      res.angular.z = std::min(goal.angular.z, last.angular.z + TWIST_STEP);
+    } else {
+      res.angular.z = std::min(goal.angular.z, last.angular.z + TWIST_STEP / 10);
+    }
+    // res.angular.z = std::min(goal.angular.z, last.angular.z + TWIST_STEP);
   } else {
     res.angular.z = std::max(goal.angular.z, last.angular.z - TWIST_STEP);
   }
@@ -141,7 +146,8 @@ double Controller::calculateForward(GlobalPosition cur_, GlobalPosition goal_) {
   double forward = calculateCurSpeed(distance, MAX_FORWARD, MIN_FORWARD, MAX_FORWARD_THRESHOLD, MIN_FORWARD_THRESHOLD);
   // 当且仅当以下连个条件满足时，减速并切换到下一状态
   
-  if( distance < 0.4 && isGetQRCode_) {
+  // if( distance < 0.4 && isGetQRCode_) {
+  if( distance < 0.4 ) {
     // 减速阶段
     switchQRCodeStatus(false);
     forward = 0;
@@ -153,7 +159,7 @@ double Controller::calculateForward(GlobalPosition cur_, GlobalPosition goal_) {
 double Controller::calculateTwistWithRedundancy(GlobalPosition cur_, GlobalPosition goal_) {
   // 计算两点距离
   double distance = calculateDistance(cur_, goal_);
-  if(distance <= 0.4 && isGetQRCode_) return 0;
+  if(distance <= 0.4) return 0;
   // 计算当前位置的角度冗余量
   double redundancy = atan(0.05 / (distance + BAIS));
   // 计算当前角度的目标转向
@@ -173,7 +179,7 @@ double Controller::calculateTwistWithRedundancy(GlobalPosition cur_, GlobalPosit
   // 正常判断方向，并计算参数
   if( diff > redundancy || (-diff) > redundancy) {
     // 角度过大，需要顺时针转向: diff 自带方向性
-    twist = diff * ANGLE_ADJUST_GAIN;
+    twist = -diff * ANGLE_ADJUST_GAIN;
     // twist = std::min( diff * ANGLE_ADJUST_GAIN, MAX_TWIST * 0.25);
   }
   return twist;
@@ -190,6 +196,8 @@ void Controller::switchQRCodeStatus(bool status) {
 void Controller::updateGoal() {
   // 小车必须在停止状态： 为缓加减速提供空间
   if(status_ != car_status::STOP) return;
+  // distance
+  // double distance = 
   WriteLock lock(rwMutex_);
   taskIndex_ ++;
   // 检测到测试状态, 循环测试
